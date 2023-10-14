@@ -1,4 +1,4 @@
-__updated__ = "2023-07-17 14:55:20"
+__updated__ = "2023-10-14 15:31:01"
 
 import warnings
 
@@ -26,6 +26,7 @@ from collections.abc import Iterable
 import plotly.express as pe
 import plotly.io as pio
 from plotly.tools import FigureFactory as FF
+import plotly.graph_objects as go
 import pyfinance.ols as po
 from texttable import Texttable
 from xpinyin import Pinyin
@@ -1510,6 +1511,7 @@ class pure_moon(object):
         "inner_short_ret_yearly",
         "inner_long_net_values",
         "inner_short_net_values",
+        "group_mean_rets_monthly"
     ]
 
     @classmethod
@@ -2227,6 +2229,8 @@ class pure_moon(object):
                 ),
             ]
         )
+        self.group_mean_rets_monthly=self.group_rets.drop(columns=['long_short']).mean()
+        self.group_mean_rets_monthly=self.group_mean_rets_monthly-self.group_mean_rets_monthly.mean()
 
     def plot_net_values(self, y2, filename, iplot=1, ilegend=1, without_breakpoint=0):
         """使用matplotlib来画图，y2为是否对多空组合采用双y轴"""
@@ -2243,22 +2247,16 @@ class pure_moon(object):
             if not STATES["NO_SAVE"]:
                 plt.savefig(filename_path)
         else:
-            tris = (
-                pd.concat(
-                    [self.group_net_values, self.factor_cross_stds, self.rankics],
-                    axis=1,
-                )
-                .rename(columns={0: "因子截面标准差"})
-                .dropna()
-            )
+            
+            tris = self.group_net_values
             if without_breakpoint:
                 tris = tris.dropna()
             figs = cf.figures(
                 tris,
                 [
                     dict(kind="line", y=list(self.group_net_values.columns)),
-                    dict(kind="bar", y="因子截面标准差"),
-                    dict(kind="bar", y="rankic"),
+                    # dict(kind="bar", y="各组月均超均收益"),
+                    # dict(kind="bar", y="rankic"),
                 ],
                 asList=True,
             )
@@ -2279,12 +2277,21 @@ class pure_moon(object):
             # here=here.to_numpy().tolist()+[['信息系数','结果','绩效指标','结果']]
             table = FF.create_table(here.iloc[::-1])
             table.update_yaxes(matches=None)
+            pic2=go.Figure(go.Bar(y=list(self.group_mean_rets_monthly),x=[i.replace('roup','') for i in list(self.group_mean_rets_monthly.index)]))
             # table=go.Figure([go.Table(header=dict(values=list(here.columns)),cells=dict(values=here.to_numpy().tolist()))])
+            pic3_data=go.Bar(y=list(self.rankics.rankic),x=list(self.rankics.index))
+            pic3=go.Figure(data=[pic3_data])
+            pic4_data=go.Line(y=list(self.rankics.rankic.cumsum()),x=list(self.rankics.index),name='y2',yaxis='y2')
+            pic4_layout=go.Layout(yaxis2=dict(title='y2',side='right'))
+            pic4=go.Figure(data=[pic4_data],layout=pic4_layout)
             figs.append(table)
             figs = [figs[-1]] + figs[:-1]
+            figs.append(pic2)
+            figs = [figs[0],figs[1],figs[-1],pic3]
             figs[1].update_layout(
                 legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01)
             )
+            figs[3].update_layout(yaxis2=dict(title='y2',side='right'))
             base_layout = cf.tools.get_base_layout(figs)
 
             sp = cf.subplots(
@@ -2294,6 +2301,7 @@ class pure_moon(object):
                 vertical_spacing=0.15,
                 horizontal_spacing=0.03,
                 shared_yaxes=False,
+                
                 specs=[
                     [
                         {"rowspan": 2, "colspan": 4},
@@ -2322,7 +2330,7 @@ class pure_moon(object):
                         None,
                     ],
                 ],
-                subplot_titles=["净值曲线", "因子截面标准差", "Rank IC时序图", "绩效指标"],
+                subplot_titles=["净值曲线", "各组月均超均收益", "Rank IC时序图", "绩效指标"],
             )
             sp["layout"].update(showlegend=ilegend)
             # los=sp['layout']['annotations']
@@ -2345,6 +2353,7 @@ class pure_moon(object):
             # sp['layout']['annotations']=los
             # print(sp['layout']['annotations'])
             # sp['layout']['annotations'][0]['yanchor']='top'
+
             cf.iplot(sp)
             # tris=pd.concat([self.group_net_values,self.rankics,self.factor_turnover_rates],axis=1).rename(columns={0:'turnover_rate'})
             # sp=plyoo.make_subplots(rows=2,cols=8,vertical_spacing=.15,horizontal_spacing=.03,
@@ -2396,6 +2405,7 @@ class pure_moon(object):
         iplot=1,
         ilegend=0,
         without_breakpoint=0,
+        beauty_comments=0,
     ):
         """运行回测部分"""
         if comments_writer and not (comments_sheetname or sheetname):
@@ -2507,28 +2517,33 @@ class pure_moon(object):
                 if not on_paper:
                     total_comments = self.total_comments.copy()
                     tc = list(total_comments.评价指标)
-                    tc[0] = str(round(tc[0] * 100, 2)) + "%"
-                    tc[1] = str(round(tc[1], 2))
-                    tc[2] = str(round(tc[2] * 100, 2)) + "%"
-                    tc[3] = str(round(tc[3], 2))
-                    tc[4] = str(round(tc[4], 2))
-                    tc[5] = str(round(tc[5] * 100, 2)) + "%"
-                    tc[6] = str(round(tc[6] * 100, 2)) + "%"
-                    tc[7] = str(round(tc[7] * 100, 2)) + "%"
-                    tc[8] = str(round(tc[8], 2))
-                    tc[9] = str(round(tc[9] * 100, 2)) + "%"
-                    tc[10] = str(round(tc[10] * 100, 2)) + "%"
-                    tc[11] = str(round(tc[11] * 100, 2)) + "%"
-                    tc[12] = str(round(tc[12] * 100, 2)) + "%"
-                    tc[13] = str(round(tc[13] * 100, 2)) + "%"
-                    tc[14] = str(round(tc[14], 2))
-                    tc[15] = str(round(tc[15], 2))
-                    tc[16] = str(round(tc[16] * 100, 2)) + "%"
-                    tc[17] = str(round(tc[17] * 100, 2)) + "%"
+                    if beauty_comments:
+                        tc[0] = str(round(tc[0] * 100, 2)) + "%"
+                        tc[1] = str(round(tc[1], 2))
+                        tc[2] = str(round(tc[2] * 100, 2)) + "%"
+                        tc[3] = str(round(tc[3], 2))
+                        tc[4] = str(round(tc[4], 2))
+                        tc[5] = str(round(tc[5] * 100, 2)) + "%"
+                        tc[6] = str(round(tc[6] * 100, 2)) + "%"
+                        tc[7] = str(round(tc[7] * 100, 2)) + "%"
+                        tc[8] = str(round(tc[8], 2))
+                        tc[9] = str(round(tc[9] * 100, 2)) + "%"
+                        tc[10] = str(round(tc[10] * 100, 2)) + "%"
+                        tc[11] = str(round(tc[11] * 100, 2)) + "%"
+                        tc[12] = str(round(tc[12] * 100, 2)) + "%"
+                        tc[13] = str(round(tc[13] * 100, 2)) + "%"
+                        tc[14] = str(round(tc[14], 2))
+                        tc[15] = str(round(tc[15], 2))
+                        tc[16] = str(round(tc[16] * 100, 2)) + "%"
+                        tc[17] = str(round(tc[17] * 100, 2)) + "%"
+                    tc=tc+list(self.group_mean_rets_monthly)
                     new_total_comments = pd.DataFrame(
-                        {sheetname: tc}, index=total_comments.index
+                        {sheetname: tc}, index=list(total_comments.index)+[f'第{i}组' for i in range(1,groups_num+1)]
                     )
-                    new_total_comments.T.to_excel(comments_writer, sheet_name=sheetname)
+                    new_total_comments.to_excel(comments_writer, sheet_name=sheetname)
+                    rankic_twins=pd.concat([self.rankics.rankic,self.rankics.rankic.cumsum()],axis=1)
+                    rankic_twins.columns=['RankIC','RankIC累积']
+                    rankic_twins.to_excel(comments_writer,sheet_name=sheetname+'RankIC')
                 else:
                     self.total_comments.rename(columns={"评价指标": sheetname}).to_excel(
                         comments_writer, sheet_name=sheetname
@@ -4065,7 +4080,8 @@ class pure_newyear(object):
 def follow_tests(
     fac: pd.DataFrame,
     trade_cost_double_side_list: float = [0.001, 0.002, 0.003, 0.004, 0.005],
-    index_member_value_weighted: bool = 1,
+    groups_num: int = 10,
+    index_member_value_weighted: bool = 0,
     comments_writer: pd.ExcelWriter = None,
     net_values_writer: pd.ExcelWriter = None,
     pos: bool = 0,
@@ -4075,6 +4091,7 @@ def follow_tests(
     nums: List[int] = [3],
     opens_average_first_day: bool = 0,
     total_cap: bool = 0,
+    without_industry: bool = 1,
 ):
     """因子完成全A测试后，进行的一些必要的后续测试，包括各个分组表现、相关系数与纯净化、3510的多空和多头、各个行业Rank IC、各个行业买3只超额表现
 
@@ -4084,6 +4101,8 @@ def follow_tests(
         要进行后续测试的因子值，index是时间，columns是股票代码，values是因子值
     trade_cost_double_side : float, optional
         交易的双边手续费率, by default 0
+    groups_num : int, optional
+        分组数量, by default 10 
     index_member_value_weighted : bool, optional
         成分股多头采取流通市值加权
     comments_writer : pd.ExcelWriter, optional
@@ -4104,6 +4123,8 @@ def follow_tests(
         买入时使用第一天的平均价格, by default 0
     total_cap : bool, optional
         加权和行业市值中性化时使用总市值, by default 0
+    without_industry : bool, optional
+        是否不对行业做测试, by default 1
 
     Raises
     ------
@@ -4122,6 +4143,7 @@ def follow_tests(
     shen = pure_moonnight(
         fac,
         opens_average_first_day=opens_average_first_day,
+        trade_cost_double_side=0.003,
     )
     if (
         shen.shen.group_net_values.group1.iloc[-1]
@@ -4151,38 +4173,40 @@ def follow_tests(
     fi300 = daily_factor_on300500(fac, hs300=1)
     shen = pure_moonnight(
         fi300,
+        groups_num=groups_num,
         value_weighted=index_member_value_weighted,
         comments_writer=comments_writer,
         net_values_writer=net_values_writer,
         sheetname="300多空",
         opens_average_first_day=opens_average_first_day,
         total_cap=total_cap,
+        trade_cost_double_side=0.003,
     )
     if pos:
         if comments_writer is not None:
-            make_relative_comments(shen.shen.group_rets.group10, hs300=1).to_excel(
+            make_relative_comments(shen.shen.group_rets[f'group{groups_num}'], hs300=1).to_excel(
                 comments_writer, sheet_name="300超额"
             )
             for i in trade_cost_double_side_list:
                 make_relative_comments(
-                    shen.shen.group_rets.group10
-                    - shen.shen.factor_turnover_rates.group10 * i,
+                    shen.shen.group_rets[f'group{groups_num}']
+                    - shen.shen.factor_turnover_rates[f'group{groups_num}'] * i,
                     hs300=1,
                 ).to_excel(comments_writer, sheet_name=f"300超额双边费率{i}")
         else:
-            make_relative_comments(shen.shen.group_rets.group10, hs300=1)
+            make_relative_comments(shen.shen.group_rets[f'group{groups_num}'], hs300=1)
         if net_values_writer is not None:
-            make_relative_comments_plot(shen.shen.group_rets.group10, hs300=1).to_excel(
+            make_relative_comments_plot(shen.shen.group_rets[f'group{groups_num}'], hs300=1).to_excel(
                 net_values_writer, sheet_name="300超额"
             )
             for i in trade_cost_double_side_list:
                 make_relative_comments_plot(
-                    shen.shen.group_rets.group10
-                    - shen.shen.factor_turnover_rates.group10 * i,
+                    shen.shen.group_rets[f'group{groups_num}']
+                    - shen.shen.factor_turnover_rates[f'group{groups_num}'] * i,
                     hs300=1,
                 ).to_excel(net_values_writer, sheet_name=f"300超额双边费率{i}")
         else:
-            make_relative_comments_plot(shen.shen.group_rets.group10, hs300=1)
+            make_relative_comments_plot(shen.shen.group_rets[f'group{groups_num}'], hs300=1)
     elif neg:
         if comments_writer is not None:
             make_relative_comments(shen.shen.group_rets.group1, hs300=1).to_excel(
@@ -4214,38 +4238,40 @@ def follow_tests(
     fi500 = daily_factor_on300500(fac, zz500=1)
     shen = pure_moonnight(
         fi500,
+        groups_num=groups_num,
         value_weighted=index_member_value_weighted,
         comments_writer=comments_writer,
         net_values_writer=net_values_writer,
         sheetname="500多空",
         opens_average_first_day=opens_average_first_day,
         total_cap=total_cap,
+        trade_cost_double_side=0.003,
     )
     if pos:
         if comments_writer is not None:
-            make_relative_comments(shen.shen.group_rets.group10, zz500=1).to_excel(
+            make_relative_comments(shen.shen.group_rets[f'group{groups_num}'], zz500=1).to_excel(
                 comments_writer, sheet_name="500超额"
             )
             for i in trade_cost_double_side_list:
                 make_relative_comments(
-                    shen.shen.group_rets.group10
-                    - shen.shen.factor_turnover_rates.group10 * i,
+                    shen.shen.group_rets[f'group{groups_num}']
+                    - shen.shen.factor_turnover_rates[f'group{groups_num}'] * i,
                     zz500=1,
                 ).to_excel(comments_writer, sheet_name=f"500超额双边费率{i}")
         else:
-            make_relative_comments(shen.shen.group_rets.group10, zz500=1)
+            make_relative_comments(shen.shen.group_rets[f'group{groups_num}'], zz500=1)
         if net_values_writer is not None:
-            make_relative_comments_plot(shen.shen.group_rets.group10, zz500=1).to_excel(
+            make_relative_comments_plot(shen.shen.group_rets[f'group{groups_num}'], zz500=1).to_excel(
                 net_values_writer, sheet_name="500超额"
             )
             for i in trade_cost_double_side_list:
                 make_relative_comments_plot(
-                    shen.shen.group_rets.group10
-                    - shen.shen.factor_turnover_rates.group10 * i,
+                    shen.shen.group_rets[f'group{groups_num}']
+                    - shen.shen.factor_turnover_rates[f'group{groups_num}'] * i,
                     zz500=1,
                 ).to_excel(net_values_writer, sheet_name=f"500超额双边费率{i}")
         else:
-            make_relative_comments_plot(shen.shen.group_rets.group10, zz500=1)
+            make_relative_comments_plot(shen.shen.group_rets[f'group{groups_num}'], zz500=1)
     else:
         if comments_writer is not None:
             make_relative_comments(shen.shen.group_rets.group1, zz500=1).to_excel(
@@ -4275,38 +4301,40 @@ def follow_tests(
     fi1000 = daily_factor_on300500(fac, zz1000=1)
     shen = pure_moonnight(
         fi1000,
+        groups_num=groups_num,
         value_weighted=index_member_value_weighted,
         comments_writer=comments_writer,
         net_values_writer=net_values_writer,
         sheetname="1000多空",
         opens_average_first_day=opens_average_first_day,
         total_cap=total_cap,
+        trade_cost_double_side=0.003,
     )
     if pos:
         if comments_writer is not None:
-            make_relative_comments(shen.shen.group_rets.group10, zz1000=1).to_excel(
+            make_relative_comments(shen.shen.group_rets[f'group{groups_num}'], zz1000=1).to_excel(
                 comments_writer, sheet_name="1000超额"
             )
             for i in trade_cost_double_side_list:
                 make_relative_comments(
-                    shen.shen.group_rets.group10
-                    - shen.shen.factor_turnover_rates.group10 * i,
+                    shen.shen.group_rets[f'group{groups_num}']
+                    - shen.shen.factor_turnover_rates[f'group{groups_num}'] * i,
                     zz1000=1,
                 ).to_excel(comments_writer, sheet_name=f"1000超额双边费率{i}")
         else:
-            make_relative_comments(shen.shen.group_rets.group10, zz1000=1)
+            make_relative_comments(shen.shen.group_rets[f'group{groups_num}'], zz1000=1)
         if net_values_writer is not None:
             make_relative_comments_plot(
-                shen.shen.group_rets.group10, zz1000=1
+                shen.shen.group_rets[f'group{groups_num}'], zz1000=1
             ).to_excel(net_values_writer, sheet_name="1000超额")
             for i in trade_cost_double_side_list:
                 make_relative_comments_plot(
-                    shen.shen.group_rets.group10
-                    - shen.shen.factor_turnover_rates.group10 * i,
+                    shen.shen.group_rets[f'group{groups_num}']
+                    - shen.shen.factor_turnover_rates[f'group{groups_num}'] * i,
                     zz1000=1,
                 ).to_excel(net_values_writer, sheet_name=f"1000超额双边费率{i}")
         else:
-            make_relative_comments_plot(shen.shen.group_rets.group10, zz1000=1)
+            make_relative_comments_plot(shen.shen.group_rets[f'group{groups_num}'], zz1000=1)
     else:
         if comments_writer is not None:
             make_relative_comments(shen.shen.group_rets.group1, zz1000=1).to_excel(
@@ -4332,18 +4360,19 @@ def follow_tests(
                 ).to_excel(net_values_writer, sheet_name=f"1000超额双边费率{i}")
         else:
             make_relative_comments_plot(shen.shen.group_rets.group1, zz1000=1)
-    # 各行业Rank IC
-    rankics = rankic_test_on_industry(fac, comments_writer)
-    # 买3只超额表现
-    rets = long_test_on_industry(
-        fac, nums, pos=pos, neg=neg, swindustry=swindustry, zxindustry=zxindustry
-    )
+    if not without_industry:
+        # 各行业Rank IC
+        rankics = rankic_test_on_industry(fac, comments_writer)
+        # 买3只超额表现
+        rets = long_test_on_industry(
+            fac, nums, pos=pos, neg=neg, swindustry=swindustry, zxindustry=zxindustry
+        )
     logger.success("因子后续的必要测试全部完成")
 
 
 def test_on_index_four_out(
     fac: pd.DataFrame,
-    value_weighted: bool = 1,
+    value_weighted: bool = 0,
     trade_cost_double_side_list: float = [0.001, 0.002, 0.003, 0.004, 0.005],
     group_num: int = 10,
     boxcox: bool = 1,

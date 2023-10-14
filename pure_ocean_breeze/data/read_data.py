@@ -1,4 +1,4 @@
-__updated__ = "2023-07-04 09:13:50"
+__updated__ = "2023-07-26 16:42:17"
 
 import os
 import numpy as np
@@ -277,7 +277,7 @@ def read_daily(
         elif swing:
             df = (
                 read_daily(high=1, start=start) - read_daily(low=1, start=start)
-            ) / read_daily(close=1, start=start)
+            ) / read_daily(close=1, start=start).shift(1)
         elif pb:
             df = pd.read_parquet(homeplace.daily_data_file + "pb.parquet") * read_daily(
                 state=1, start=start
@@ -452,7 +452,7 @@ def read_market(
     df.index = pd.to_datetime(df.index.astype(str), format="%Y%m%d")
     if open:
         # 米筐的第一分钟是集合竞价，第一分钟的收盘价即为当天开盘价
-        df = df[df.num == 1].close
+        df = df[df.num == 1].open
     elif close:
         df = df[df.num == 240].close
     elif high:

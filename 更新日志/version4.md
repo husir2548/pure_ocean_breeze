@@ -1,6 +1,15 @@
 ## 更新日志🗓 — v4
 
 
+* v4.0.8 — 2023.10.14
+
+> 1. 修复了Questdb读取到None时不能识别的bug
+> 2. 修正了read_daily计算振幅的公式错误
+> 3. 修复了read_market中读取开盘价时的错误
+> 4. 升级了pure_moon因子回测结果展示，删去了因子截面标准差，新增了各组月均超额收益项
+> 5. 给follow_tests新增了groups_num参数，用于指定分组数量；新增了without_industry参数，指定不在行业成分股内做测试
+
+
 * v4.0.7 — 2023.7.17
 
 > 1. 给pure_fall_frequent和pure_fall_nature新增了use_mpire参数，可以使用mpire库开启并行
@@ -65,7 +74,7 @@
 >
 >    ```python
 >    import pure_ocean_breeze as p
->                
+>                   
 >    p.ini()
 >    ```
 > 2. 初始化函数与`Homeplace`参数新增了存储逐笔数据的路径

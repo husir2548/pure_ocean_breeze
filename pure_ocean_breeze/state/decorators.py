@@ -2,7 +2,7 @@
 用于标注函数功能的一些装饰器（用处不大）
 """
 
-__updated__ = "2023-02-21 09:09:30"
+__updated__ = "2023-08-15 17:03:08"
 from typing import Iterable
 
 
